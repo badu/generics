@@ -20,10 +20,10 @@ func (f data) Clone() data {
 }
 
 type Data struct {
-	ID       int    `json:"id"`
-	OwnerID  int    `json:"userId"`
 	Title    string `json:"title"`
 	Body     string `json:"body"`
+	ID       int    `json:"id"`
+	OwnerID  int    `json:"userId"`
 	Quantity int    `json:"quantity"`
 }
 
@@ -1395,8 +1395,8 @@ func TestHasWhere(t *testing.T) {
 	is := assert.New(t)
 
 	type ntt struct {
-		A int
 		B string
+		A int
 	}
 
 	a1 := []ntt{{A: 1, B: "1"}, {A: 2, B: "2"}, {A: 3, B: "3"}}

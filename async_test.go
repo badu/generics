@@ -65,10 +65,10 @@ func TestRun(t *testing.T) {
 	}
 }
 
-func TestAttemptResolve(t *testing.T) {
+func TestTry(t *testing.T) {
 	ctx := context.Background()
 	promise1 := Go(ctx, time.Second, sleep)
-	result1, err := promise1.AttemptResolve()
+	result1, err := promise1.Try()
 	if result1 != 0 {
 		t.Error("expecting 0, got ", result1)
 	}
@@ -84,7 +84,7 @@ func TestAttemptResolve(t *testing.T) {
 		t.Error("expecting 1000000000, got ", result1)
 	}
 
-	result1, err = promise1.AttemptResolve()
+	result1, err = promise1.Try()
 	if err != nil {
 		t.Error("expecting no error, got ", err)
 	}
@@ -128,7 +128,7 @@ func TestWait(t *testing.T) {
 		t.Error("expecting ErrFatal, got ", err)
 	}
 
-	result3, err := promise3.AttemptResolve()
+	result3, err := promise3.Try()
 	if result3 != 0 {
 		t.Error("expecting 0, got ", result3)
 	}
@@ -198,18 +198,18 @@ func TestThen(t *testing.T) {
 	}
 }
 
-func TestAttempt(t *testing.T) {
+func TestInvoke(t *testing.T) {
 	is := assert.New(t)
 
 	err := fmt.Errorf("failed")
 
-	t1, err1 := Attempt(12, func(i int) error {
+	t1, err1 := Invoke(12, func(i int) error {
 		return nil
 	})
 	is.Equal(t1, 1)
 	is.Equal(err1, nil)
 
-	t2, err2 := Attempt(12, func(i int) error {
+	t2, err2 := Invoke(12, func(i int) error {
 		if i == 11 {
 			return nil
 		}
@@ -218,7 +218,7 @@ func TestAttempt(t *testing.T) {
 	is.Equal(t2, 12)
 	is.Equal(err2, nil)
 
-	t3, err3 := Attempt(2, func(i int) error {
+	t3, err3 := Invoke(2, func(i int) error {
 		if i == 11 {
 			return nil
 		}
@@ -227,7 +227,7 @@ func TestAttempt(t *testing.T) {
 	is.Equal(t3, 2)
 	is.Equal(err3, err)
 
-	t4, err4 := Attempt(0, func(i int) error {
+	t4, err4 := Invoke(0, func(i int) error {
 		if i < 100 {
 			return err
 		}
@@ -238,12 +238,12 @@ func TestAttempt(t *testing.T) {
 	is.Equal(err4, nil)
 }
 
-func TestAttemptWithDelay(t *testing.T) {
+func TestDelayedInvoke(t *testing.T) {
 	is := assert.New(t)
 
 	err := fmt.Errorf("failed")
 
-	t1, time1, err1 := AttemptAfter(42, 10*time.Millisecond, func(i int, d time.Duration) error {
+	t1, time1, err1 := DelayedInvoke(42, 10*time.Millisecond, func(i int, d time.Duration) error {
 		return nil
 	})
 	is.Equal(t1, 1)
@@ -251,7 +251,7 @@ func TestAttemptWithDelay(t *testing.T) {
 	is.Less(time1, 1*time.Millisecond)
 	is.Equal(err1, nil)
 
-	t2, time2, err2 := AttemptAfter(42, 10*time.Millisecond, func(i int, d time.Duration) error {
+	t2, time2, err2 := DelayedInvoke(42, 10*time.Millisecond, func(i int, d time.Duration) error {
 		if i == 5 {
 			return nil
 		}
@@ -263,7 +263,7 @@ func TestAttemptWithDelay(t *testing.T) {
 	is.Less(time2, 60*time.Millisecond)
 	is.Equal(err2, nil)
 
-	t3, time3, err3 := AttemptAfter(2, 10*time.Millisecond, func(i int, d time.Duration) error {
+	t3, time3, err3 := DelayedInvoke(2, 10*time.Millisecond, func(i int, d time.Duration) error {
 		if i == 5 {
 			return nil
 		}
@@ -275,7 +275,7 @@ func TestAttemptWithDelay(t *testing.T) {
 	is.Less(time3, 20*time.Millisecond)
 	is.Equal(err3, err)
 
-	t4, time4, err4 := AttemptAfter(0, 10*time.Millisecond, func(i int, d time.Duration) error {
+	t4, time4, err4 := DelayedInvoke(0, 10*time.Millisecond, func(i int, d time.Duration) error {
 		if i < 10 {
 			return err
 		}

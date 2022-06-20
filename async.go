@@ -9,48 +9,49 @@ import (
 
 var ErrNotDone = errors.New("not done")
 
-type Promising[T, V any] func(context.Context, T) (V, error)
+type Promising[T, U any] func(context.Context, T) (U, error)
 
 type Waiter interface { // doesn't bring cocktails :P
 	Wait() error
 }
 
-type Promise[V any] struct {
-	result V
+type Promise[T any] struct {
+	result T
 	err    error
 	done   <-chan struct{}
 }
 
-func (p *Promise[V]) Resolve() (V, error) {
+func (p *Promise[T]) Resolve() (T, error) {
 	<-p.done
+
 	return p.result, p.err
 }
 
-func (p *Promise[V]) AttemptResolve() (V, error) {
+func (p *Promise[T]) Try() (T, error) {
 	select {
 	case <-p.done:
 		return p.result, p.err
 	default:
-		var zero V
+		var zero T
 		return zero, ErrNotDone
 	}
 }
 
-func Go[T, V any](ctx context.Context, t T, fn Promising[T, V]) *Promise[V] {
-	done := make(chan struct{})
-	p := Promise[V]{
-		done: done,
-	}
-	go func() {
-		defer close(done)
-		p.result, p.err = fn(ctx, t)
-	}()
-	return &p
-}
-
-func (p *Promise[V]) Wait() error {
+func (p *Promise[T]) Wait() error {
 	<-p.done
 	return p.err
+}
+
+func Go[T, U any](ctx context.Context, t T, fn Promising[T, U]) *Promise[U] {
+	done := make(chan struct{})
+	result := Promise[U]{done: done}
+
+	go func() {
+		defer close(done)
+		result.result, result.err = fn(ctx, t)
+	}()
+
+	return &result
 }
 
 func Wait(ws ...Waiter) error {
@@ -58,31 +59,34 @@ func Wait(ws ...Waiter) error {
 	wg.Add(len(ws))
 	errChan := make(chan error, len(ws))
 	done := make(chan struct{})
+
 	for _, w := range ws {
 		go func(w Waiter) {
 			defer wg.Done()
-			err := w.Wait()
-			if err != nil {
+			if err := w.Wait(); err != nil {
 				errChan <- err
 			}
 		}(w)
 	}
+
 	go func() {
 		defer close(done)
 		wg.Wait()
 	}()
+
 	select {
 	case err := <-errChan:
 		return err
-	case <-done:
+	case <-done: // nothing to do
 	}
+
 	return nil
 }
 
-func WithCancel[T, V any](fn Promising[T, V]) Promising[T, V] {
-	return func(ctx context.Context, t T) (V, error) {
+func WithCancel[T, U any](fn Promising[T, U]) Promising[T, U] {
+	return func(ctx context.Context, t T) (U, error) {
 		var (
-			val V
+			val U
 			err error
 		)
 
@@ -94,7 +98,7 @@ func WithCancel[T, V any](fn Promising[T, V]) Promising[T, V] {
 
 		select {
 		case <-ctx.Done():
-			return *new(V), ctx.Err()
+			return *new(U), ctx.Err()
 		case <-done: // nothing to do
 		}
 
@@ -102,31 +106,32 @@ func WithCancel[T, V any](fn Promising[T, V]) Promising[T, V] {
 	}
 }
 
-func Then[T, V any](ctx context.Context, p *Promise[T], fn Promising[T, V]) *Promise[V] {
+func Then[T, U any](ctx context.Context, p *Promise[T], fn Promising[T, U]) *Promise[U] {
 	done := make(chan struct{})
-	out := Promise[V]{
-		done: done,
-	}
+	result := Promise[U]{done: done}
+
 	go func() {
 		defer close(done)
-		val, err := p.Resolve()
+		first, err := p.Resolve()
 		if err != nil {
-			out.err = err
+			result.err = err
 			return
 		}
-		val2, err := fn(ctx, val)
-		out.result = val2
-		out.err = err
+
+		second, err := fn(ctx, first)
+		result.result = second
+		result.err = err
 	}()
-	return &out
+
+	return &result
 }
 
 type debounce struct {
-	after     time.Duration
 	mu        *sync.Mutex
 	timer     *time.Timer
-	done      bool
 	callbacks []func()
+	after     time.Duration
+	done      bool
 }
 
 func (d *debounce) reset() *debounce {
@@ -174,8 +179,8 @@ func NewDebounce(delay time.Duration, fns ...func()) (func(), func()) {
 	}, d.cancel
 }
 
-// Attempt invokes a function N times until it returns valid output. Returning either the caught error or nil. When first argument is less than `1`, the function runs until a successful response is returned.
-func Attempt(times int, fn func(int) error) (int, error) {
+// Invoke invokes a function N times until it returns valid output. Returning either the caught error or nil. When first argument is less than `1`, the function runs until a successful response is returned.
+func Invoke(times int, fn func(int) error) (int, error) {
 	var err error
 
 	for i := 0; times <= 0 || i < times; i++ {
@@ -188,9 +193,9 @@ func Attempt(times int, fn func(int) error) (int, error) {
 	return times, err
 }
 
-// AttemptAfter invokes a function N times until it returns valid output, with a pause between each call. Returning either the caught error or nil.
+// DelayedInvoke invokes a function N times until it returns valid output, with a pause between each call. Returning either the caught error or nil.
 // When first argument is less than `1`, the function runs until a successful response is returned.
-func AttemptAfter(times int, delay time.Duration, fn func(int, time.Duration) error) (int, time.Duration, error) {
+func DelayedInvoke(times int, delay time.Duration, fn func(int, time.Duration) error) (int, time.Duration, error) {
 	var err error
 
 	start := time.Now()

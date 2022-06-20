@@ -8,6 +8,20 @@ Sometimes, you need to return ugly things like `return *new(T), false`, just bec
 
 You have to deref results when your generic function has to return pointers, like in the pattern `(*T, error)`.
 
+There is no way to both support predeclared types AND support user defined types.
+
+It would be great to have:
+
+```go
+type Swapper[T comparable] interface {
+    Swap(i, j int)
+}
+
+type Ordered[T comparable] interface {
+  constraints.Ordered | Swapper[T]
+}
+```
+
 Implementation restriction: A union (with more than one term) cannot contain the predeclared identifier comparable or interfaces that specify methods, or embed comparable or interfaces that specify methods.
 
 And the conclusions from [here](https://planetscale.com/blog/generics-can-make-your-go-code-slower) 
