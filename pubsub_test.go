@@ -153,7 +153,7 @@ func Example() {
 		done <- struct{}{}
 	}()
 
-	if err := bus.Dispatch(greetingMessage{greeting: "Hello, badu!"}); err != nil { // Dispatch a message to the topic. This call of Dispatch is non-blocking.
+	if err := bus.Dispatch(greetingMessage{greeting: "Hello, Badu!"}); err != nil { // Dispatch a message to the topic. This call of Dispatch is non-blocking.
 		println(err)
 		return
 	}

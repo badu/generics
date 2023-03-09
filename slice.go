@@ -1,11 +1,13 @@
 package generics
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 	"sync"
 
 	"golang.org/x/exp/constraints"
+	"golang.org/x/exp/slices"
 )
 
 // NumericFirstIndexOf returns the index at which the first occurrence of a value is found in a slice
@@ -908,4 +910,26 @@ func ParallelPartitionWhere[T any, K comparable](slice []T, fn func(x T) K) [][]
 	wg.Wait()
 
 	return result
+}
+
+// Permutations returns all permutations of the slice's elements.
+func Permutations[T any](source []T) ([][]T, error) {
+	if len(source) == 0 {
+		return nil, errors.New("nil or empty slice")
+	}
+	if len(source) == 1 {
+		return [][]T{source}, nil
+	}
+	var result [][]T
+	for i := 0; i < len(source); i++ {
+		inputClone := slices.Clone(source)
+		currentElement := inputClone[i]                     // element at i position
+		remainingSlice := slices.Delete(inputClone, i, i+1) // slice without element at i position
+		perms, _ := Permutations(remainingSlice)
+		for j := 0; j < len(perms); j++ {
+			keepElement := slices.Insert(perms[j], 0, currentElement)
+			result = append(result, keepElement)
+		}
+	}
+	return result, nil
 }

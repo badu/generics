@@ -21,8 +21,8 @@ type runningMutex struct {
 	running bool
 }
 
-// Topic is a publish-subscribe topic.
-type Topic[T any] struct {
+// Topiq is a publish-subscribe topic.
+type Topiq[T any] struct {
 	publish          chan T
 	done             chan struct{}
 	wg               sync.WaitGroup
@@ -34,19 +34,19 @@ type Topic[T any] struct {
 	}
 }
 
-// NewPubSub creates a new topic.
-func NewPubSub[T any](bufferSize int) *Topic[T] {
-	result := &Topic[T]{
+// NewPubSub creates a new Topiq.
+func NewPubSub[T any](bufferSize int) *Topiq[T] {
+	result := &Topiq[T]{
 		publish: make(chan T, bufferSize),
 		done:    make(chan struct{}),
 	}
 	return result
 }
 
-// Start starts the topic and blocks until the context is canceled.
+// Start starts the Topiq and blocks until the context is canceled.
 // When the passed context is canceled, Start waits for all published messages to be processed by all subscribers.
 // Once Start is called, then Start returns ErrAlreadyStarted.
-func (t *Topic[T]) Start(ctx context.Context) error {
+func (t *Topiq[T]) Start(ctx context.Context) error {
 	t.runningMu.Lock()
 	defer t.runningMu.Unlock()
 	if t.runningMu.running {
@@ -89,10 +89,10 @@ func (t *Topic[T]) Start(ctx context.Context) error {
 	return nil
 }
 
-// Dispatch publishes a message to the topic. This method is non-blocking and concurrent-safe. Returns ErrNotRunning if the topic has been already closed.
-func (t *Topic[T]) Dispatch(message T) error {
+// Dispatch publishes a message to the Topiq. This method is non-blocking and concurrent-safe. Returns ErrNotRunning if the Topiq has been already closed.
+func (t *Topiq[T]) Dispatch(message T) error {
 	t.endingMu.RLock()
-	defer t.endingMu.RUnlock() // avoid the race condition between Topic.Dispatch and Topic.stop, defer is necessary.
+	defer t.endingMu.RUnlock() // avoid the race condition between Topiq.Dispatch and Topiq.stop, defer is necessary.
 	if t.endingMu.running {
 		return ErrNotRunning
 	}
@@ -103,8 +103,8 @@ func (t *Topic[T]) Dispatch(message T) error {
 	return nil
 }
 
-// Listen registers the passed function as a subscriber to the topic. This method is non-blocking and concurrent-safe. Function passed to Listen is called when a message is published to the topic, obviously. Returns ErrNotRunning if the topic has been already closed.
-func (t *Topic[T]) Listen(bufferSize int, subscriber func(message T)) error {
+// Listen registers the passed function as a subscriber to the Topiq. This method is non-blocking and concurrent-safe. Function passed to Listen is called when a message is published to the Topiq, obviously. Returns ErrNotRunning if the Topiq has been already closed.
+func (t *Topiq[T]) Listen(bufferSize int, subscriber func(message T)) error {
 	t.endingMu.RLock()
 	if t.endingMu.running {
 		return ErrNotRunning
@@ -150,7 +150,7 @@ type subscription[T any] struct {
 	subscriber func(message T)
 }
 
-func (t *Topic[T]) stop() {
+func (t *Topiq[T]) stop() {
 	t.endingMu.Lock()
 	t.endingMu.running = true
 	t.endingMu.Unlock()

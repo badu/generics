@@ -3,6 +3,7 @@ package generics
 import (
 	"fmt"
 	"math"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -1655,4 +1656,66 @@ func TestParallelPartitionWhere(t *testing.T) {
 
 	is.ElementsMatch(result1, [][]int{{-2, -1}, {0, 2, 4}, {1, 3, 5}})
 	is.Equal(result2, [][]int(nil))
+}
+
+func TestPermutation(t *testing.T) {
+	type testCase struct {
+		input []int
+	}
+	tests := []struct {
+		name      string
+		test      testCase
+		want      [][]int
+		expectErr bool
+	}{
+		{
+			name:      "empty_input",
+			test:      testCase{input: []int(nil)},
+			want:      nil,
+			expectErr: true,
+		},
+		{
+			name:      "empty_slice",
+			test:      testCase{input: []int{}},
+			want:      nil,
+			expectErr: true,
+		},
+		{
+			name: "one_int",
+			test: testCase{input: []int{1}},
+			want: [][]int{{1}},
+		},
+		{
+			name: "two_ints",
+			test: testCase{input: []int{1, 2}},
+			want: [][]int{{1, 2}, {2, 1}},
+		},
+		{
+			name: "three_ints",
+			test: testCase{input: []int{1, 2, 3}},
+			want: [][]int{{1, 2, 3}, {1, 3, 2}, {2, 1, 3}, {2, 3, 1}, {3, 1, 2}, {3, 2, 1}},
+		},
+		{
+			name: "four_ints",
+			test: testCase{input: []int{1, 2, 3, 4}},
+			want: [][]int{
+				{1, 2, 3, 4}, {1, 2, 4, 3}, {1, 3, 2, 4}, {1, 3, 4, 2}, {1, 4, 2, 3}, {1, 4, 3, 2},
+				{2, 1, 3, 4}, {2, 1, 4, 3}, {2, 3, 1, 4}, {2, 3, 4, 1}, {2, 4, 1, 3}, {2, 4, 3, 1},
+				{3, 1, 2, 4}, {3, 1, 4, 2}, {3, 2, 1, 4}, {3, 2, 4, 1}, {3, 4, 1, 2}, {3, 4, 2, 1},
+				{4, 1, 2, 3}, {4, 1, 3, 2}, {4, 2, 1, 3}, {4, 2, 3, 1}, {4, 3, 1, 2}, {4, 3, 2, 1},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Permutations(tt.test.input)
+			if (err != nil) != tt.expectErr {
+				t.Errorf("error. error is = %v, but expects error %v", err, tt.expectErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("error. got = %v, but want %v", got, tt.want)
+			}
+		})
+	}
 }
